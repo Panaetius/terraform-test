@@ -1,20 +1,15 @@
 provider "kubernetes" {
-
+    config_path = "~/.kube/config-switch-dev"
 }
 
 provider "helm" {
 
 }
 
-resource "kubernetes_namespace" "test" {
-    metadata {
-        name = "ralf-dev"
-    }
-}
-
 resource "kubernetes_secret" "credentials" {
     metadata {
         name = "credentials"
+        namespace = var.namespace
     }
 
     data = {
@@ -28,6 +23,7 @@ resource "kubernetes_secret" "credentials" {
 resource "kubernetes_deployment" "test-deployment" {
     metadata {
         name = "test-deployment"
+        namespace = var.namespace
         labels = {
             app = "nginx"
         }
@@ -74,6 +70,7 @@ resource "kubernetes_deployment" "test-deployment" {
 resource "kubernetes_service" "service" {
     metadata {
         name = "service"
+        namespace = var.namespace
     }
 
     spec {
@@ -90,10 +87,11 @@ resource "kubernetes_service" "service" {
 resource "kubernetes_ingress" "ingress" {
     metadata {
         name = "ingress"
+        namespace = var.namespace
     }
     spec {
         rule {
-            host = "${kubernetes_namespace.test.metadata[0].name}"
+            host = "${var.namespace}.dev.renku.ch"
             http {
                 path {
                     backend {
@@ -108,10 +106,22 @@ resource "kubernetes_ingress" "ingress" {
     }
 }
 
+data "helm_repository" "stable" {
+  name = "stable"
+  url  = "https://kubernetes-charts.storage.googleapis.com"
+}
+
 resource "helm_release" "postgres" {
   name  = "postgres"
-  chart = "stable/postgres"
+  chart = "stable/postgresql"
+  repository = data.helm_repository.stable.metadata[0].name
   version = "6.3.13"
+  namespace = var.namespace
+
+  set {
+      name = "livenessProbe.periodSeconds"
+      value = 9
+  }
 }
 
 output "name" {
