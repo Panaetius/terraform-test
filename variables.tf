@@ -1,4 +1,5 @@
 variable "password" {
+    default = ""
 }
 
 variable "namespace" {

@@ -6,6 +6,15 @@ provider "helm" {
 
 }
 
+provider "random" {}
+
+resource "random_password" "password" {
+  length = 32
+  special = true
+  upper = true
+  number = true
+}
+
 resource "kubernetes_secret" "credentials" {
     metadata {
         name = "credentials"
@@ -14,7 +23,7 @@ resource "kubernetes_secret" "credentials" {
 
     data = {
         username = "admin"
-        password = var.password
+        password = var.password != "" ? var.password : random_password.password.result
     }
 
     type = "kubernetes.io/basic-auth"
@@ -134,4 +143,5 @@ output "url" {
 
 output "password" {
   value = kubernetes_secret.credentials.data.password
+  sensitive = true
 }
